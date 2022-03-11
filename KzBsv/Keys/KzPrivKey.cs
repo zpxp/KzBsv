@@ -67,13 +67,14 @@ namespace KzBsv
             }
         }
 
-        public void MakeNewKey(bool compressed)
+        public KzPrivKey MakeNewKey(bool compressed)
         {
             do {
                 KzRandom.GetStrongRandBytes(keydata.Span);
             } while (!Check(keydata.ReadOnlySpan));
             fValid = true;
             fCompressed = compressed;
+				return this;
         }
 
         public KzPubKey GetPubKey()

@@ -90,6 +90,16 @@ namespace Tests.KzBsv.Encrypt
             }
 
             {
+               
+                var alice = new KzElectrumEcies { PrivateKey = aliceKey, PublicKey = bobKey.GetPubKey() };
+                var bob = new KzElectrumEcies { PrivateKey = bobKey };
+
+                var ciphertext = alice.Encrypt(message);
+                var decrypt = bob.DecryptToUTF8(ciphertext);
+                Assert.Equal(decrypt, message);
+            }
+
+            {
                 var encrypted = "0339e504d6492b082da96e11e8f039796b06cd4855c101e2492a6f10f3e056a9e712c732611c6917ab5c57a1926973bc44a1586e94a783f81d05ce72518d9b0a80e2e13c7f";
                 // encrypted broken down: 
                 // priv.pubkey 0339e504d6492b082da96e11e8f039796b06cd4855c101e2492a6f10f3e056a9e7
