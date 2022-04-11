@@ -107,6 +107,7 @@ namespace KzBsv
             lazyParams = new Lazy<KzChainParams>(() => CreateChainParams(), true);
         }
 
+		  public static KzChain Chain => chain;
         public static KzChainParams Params => lazyParams.Value;
 
         public static KzConsensus Consensus => Params.Consensus;
