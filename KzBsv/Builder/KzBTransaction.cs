@@ -86,8 +86,7 @@ namespace KzBsv
 
 		public void AddOut(KzScript scriptPubKey, long nValue)
 		{
-			throw new NotImplementedException();
-			//Vout.Add(new KzTxOut(nValue, scriptPubKey));
+			Vout.Add(new KzBTxOut(new KzTxOut(nValue, scriptPubKey)));
 		}
 
 		public KzTransaction ToTransaction() => new KzTransaction(this);
