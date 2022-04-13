@@ -50,6 +50,18 @@ namespace KzBsv
 			return r;
 		}
 
+		public KzAmount EstimateFeeInSatoshis()
+		{
+			// // largest possible sig size. final 1 is for pushdata at start. second to
+			// // final is sighash byte. the rest are DER encoding.
+			// var sigSize = 1 + 1 + 1 + 1 + 32 + 1 + 1 + 32 + 1 + 1;
+			// // length of script, y odd, x value - assumes compressed public key
+			// var pubKeySize = 1 + 1 + 33;
+
+			var size = ToTransaction().ToBytes().Length;
+			return new KzAmount((long)(Kz.Params.FeeSatsPerByte * size));
+		}
+
 		public void AddInP2PKH(KzPubKey pubKey, KzAmount value, KzUInt256 txId, int n, KzScript scriptPub, UInt32 sequence = KzTxIn.SEQUENCE_FINAL)
 		{
 			Vin.Add(KzBTxIn.FromP2PKH(pubKey, value, txId, n, scriptPub, sequence));
