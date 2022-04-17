@@ -120,15 +120,25 @@ namespace KzBsv
             return sb.ToString();
         }
 
-        /// <summary>
-        /// Converts hex and ascii strings to a specific byte count, if len has a value and disagrees it is an error.
-        /// Converts integer values to little endian bytes where the most significant bit is set if negative.
-        /// For integer values, if len has a value, the result is expanded if necessary. If len is too small it is an error.
-        /// </summary>
-        /// <param name="s"></param>
-        /// <param name="len"></param>
-        /// <returns></returns>
-        static byte[] ParseCompactValueToBytes(string s, uint? len = null) => ParseLiteralValueToBytes(s, len).bytes;
+		public bool IsP2PKH()
+		{
+			return Ops.Count == 5 &&
+					 Ops[0].Op.Code == KzOpcode.OP_DUP &&
+					 Ops[1].Op.Code == KzOpcode.OP_HASH160 &&
+					 Ops[2].IsFinal &&
+					 Ops[3].Op.Code == KzOpcode.OP_EQUALVERIFY &&
+					 Ops[4].Op.Code == KzOpcode.OP_CHECKSIG;
+		}
+
+		/// <summary>
+		/// Converts hex and ascii strings to a specific byte count, if len has a value and disagrees it is an error.
+		/// Converts integer values to little endian bytes where the most significant bit is set if negative.
+		/// For integer values, if len has a value, the result is expanded if necessary. If len is too small it is an error.
+		/// </summary>
+		/// <param name="s"></param>
+		/// <param name="len"></param>
+		/// <returns></returns>
+		static byte[] ParseCompactValueToBytes(string s, uint? len = null) => ParseLiteralValueToBytes(s, len).bytes;
 
         /// <summary>
         /// Parses signed decimals, hexadecimal strings prefixed with 0x, and ascii strings enclosed in single quotes.
