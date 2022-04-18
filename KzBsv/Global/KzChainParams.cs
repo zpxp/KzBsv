@@ -11,7 +11,7 @@ namespace KzBsv
         public KzConsensus Consensus { get; protected set; }
         public string strNetworkID { get; protected set; }
         protected byte[][] base58Prefixes;
-        public double FeeSatsPerByte = 0.5f;
+        public double FeeSatsPerByte = 0.05f;
 
         protected KzChainParams()
         {
