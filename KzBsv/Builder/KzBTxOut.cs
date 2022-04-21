@@ -2,6 +2,8 @@
 // Copyright (c) 2020 TonesNotes
 // Distributed under the Open BSV software license, see the accompanying file LICENSE.
 #endregion
+using System.Collections.Generic;
+
 namespace KzBsv
 {
     public class KzBTxOut
@@ -27,6 +29,17 @@ namespace KzBsv
                 Value = value,
                 ScriptPub = pub,
                 PubKey = pubKey
+            };
+            return r;
+        }
+
+        public static KzBTxOut ToMultisig(int required, List<KzPubKey> pubKeys, KzAmount value)
+        {
+            var pub = KzBScript.NewPubMultisig(required, pubKeys);
+
+            var r = new KzBTxOut {
+                Value = value,
+                ScriptPub = pub,
             };
             return r;
         }

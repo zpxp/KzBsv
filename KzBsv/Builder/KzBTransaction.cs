@@ -67,6 +67,11 @@ namespace KzBsv
 			Vin.Add(KzBTxIn.FromP2PKH(pubKey, value, txId, n, scriptPub, sequence));
 		}
 
+		public void AddInMultisig(int required, List<KzPubKey> pubKeys, KzAmount value, KzUInt256 txId, int n, KzScript scriptPub, UInt32 sequence = KzTxIn.SEQUENCE_FINAL)
+		{
+			Vin.Add(KzBTxIn.FromMultisig(required, pubKeys, value, txId, n, scriptPub, sequence));
+		}
+
 		public static KzBTransaction P2PKH(IEnumerable<(KzPubKey pubKey, KzTransaction tx, int n)> from, IEnumerable<(KzPubKey pubKey, long value)> to)
 		{
 			var r = new KzBTransaction();
@@ -94,6 +99,11 @@ namespace KzBsv
 		public void AddOutP2PKH(KzPubKey pubKey, KzAmount value)
 		{
 			Vout.Add(KzBTxOut.ToP2PKH(pubKey, value));
+		}
+
+		public void AddOutMultisig(int required, List<KzPubKey> pubKeys, KzAmount value)
+		{
+			Vout.Add(KzBTxOut.ToMultisig(required, pubKeys, value));
 		}
 
 		public void AddOut(KzScript scriptPubKey, long nValue)
@@ -149,45 +159,97 @@ namespace KzBsv
 			var sigHashType = new KzSigHashType(KzSigHash.ALL | KzSigHash.FORKID);
 			var tx = ToTransaction();
 			var nIn = -1;
-			foreach (var i in Vin)
+			foreach (var input in Vin)
 			{
 				nIn++;
-				var scriptSig = i.ScriptSig;
+				var scriptSig = input.ScriptSig;
 				if (scriptSig.Ops.Count == 2)
 				{
-					var pubKey = new KzPubKey();
-					pubKey.Set(scriptSig.Ops[1].Op.Data.ToSpan());
-					if (pubKey.IsValid)
+					if (scriptSig.TemplateId == KzScriptTemplateId.P2PKH)
 					{
-						var privKey = i.PrivKey ?? privKeys?.FirstOrDefault(k => k.GetPubKey() == pubKey);
-						if (privKey != null)
+						var pubKey = new KzPubKey();
+						pubKey.Set(scriptSig.Ops[1].Op.Data.ToSpan());
+						if (pubKey.IsValid)
 						{
-							if (i.ScriptPub == null)
+							var privKey = input.PrivKey ?? privKeys?.FirstOrDefault(k => k.GetPubKey() == pubKey);
+							if (privKey != null)
 							{
-								i.ScriptPub = new KzBScriptPubP2PKH(pubKey.ToHash160());
+								if (input.ScriptPub == null)
+								{
+									input.ScriptPub = new KzBScriptPubP2PKH(pubKey.ToHash160());
+								}
+								var value = input.Value ?? input.PrevOutTx?.Vout[input.PrevOutN].Value ?? 0L;
+								var sigHash = KzScriptInterpreter.ComputeSignatureHash(input.ScriptPub, tx, nIn, sigHashType, value, KzScriptFlags.ENABLE_SIGHASH_FORKID);
+								var (ok, sig) = privKey.Sign(sigHash);
+								if (ok)
+								{
+									var sigWithType = new byte[sig.Length + 1];
+									sig.CopyTo(sigWithType.AsSpan());
+									sigWithType[^1] = (byte)sigHashType.rawSigHashType;
+									var op = KzOp.Push(sigWithType.AsSpan());
+									if (confirmExistingSignatures)
+									{
+										signedOk &= op == scriptSig.Ops[0].Op;
+									}
+									else
+									{
+										scriptSig.Ops[0] = op;
+									}
+								}
+								else { signedOk = false; }
 							}
-							var value = i.Value ?? i.PrevOutTx?.Vout[i.PrevOutN].Value ?? 0L;
-							var sigHash = KzScriptInterpreter.ComputeSignatureHash(i.ScriptPub, tx, nIn, sigHashType, value, KzScriptFlags.ENABLE_SIGHASH_FORKID);
-							var (ok, sig) = privKey.Sign(sigHash);
-							if (ok)
+							else if (scriptSig.Ops[0].Op.Data.Length == 0)
 							{
-								var sigWithType = new byte[sig.Length + 1];
-								sig.CopyTo(sigWithType.AsSpan());
-								sigWithType[^1] = (byte)sigHashType.rawSigHashType;
-								var op = KzOp.Push(sigWithType.AsSpan());
-								if (confirmExistingSignatures)
-								{ signedOk &= op == scriptSig.Ops[0].Op; }
-								else
-								{ scriptSig.Ops[0] = op; }
+								signedOk = false;
 							}
-							else { signedOk = false; }
 						}
-						else if (scriptSig.Ops[0].Op.Data.Length == 0)
-						{
-							signedOk = false;
-						}
+						else { signedOk = false; }
 					}
-					else { signedOk = false; }
+					else if (scriptSig.TemplateId == KzScriptTemplateId.OpCheckMultisig)
+					{
+						if (input.ScriptPub == null)
+						{
+							throw new Exception("Multisig input ScriptPub null");
+						}
+						var required = scriptSig.Ops.Count - 1;
+						var keys = input.ScriptPub.GetMultisigKeys();
+						var value = input.Value ?? input.PrevOutTx?.Vout[input.PrevOutN].Value ?? 0L;
+						var insertIdx = 1;
+						foreach (var privKey in privKeys)
+						{
+							if (required == 0)
+							{
+								break;
+							}
+							var incPub = privKey.GetPubKey();
+							// see if this key can sign
+							var pub = keys.FirstOrDefault(x => x.ReadOnlySpan.CompareTo(incPub.ReadOnlySpan.ToSequence()) == 0);
+							if (pub != null)
+							{
+								var sigHash = KzScriptInterpreter.ComputeSignatureHash(input.ScriptPub, tx, nIn, sigHashType, value, KzScriptFlags.ENABLE_SIGHASH_FORKID);
+								var (ok, sig) = privKey.Sign(sigHash);
+								if (ok)
+								{
+									--required;
+									var sigWithType = new byte[sig.Length + 1];
+									sig.CopyTo(sigWithType.AsSpan());
+									sigWithType[^1] = (byte)sigHashType.rawSigHashType;
+									var op = KzOp.Push(sigWithType.AsSpan());
+									if (confirmExistingSignatures)
+									{
+										signedOk &= op == scriptSig.Ops[insertIdx++].Op;
+									}
+									else
+									{
+										scriptSig.Ops[insertIdx++] = op;
+									}
+								}
+								else { signedOk = false; }
+							}
+						}
+
+					}
+
 				}
 			}
 			return signedOk;

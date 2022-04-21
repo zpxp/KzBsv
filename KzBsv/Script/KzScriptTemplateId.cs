@@ -42,6 +42,10 @@ namespace KzBsv {
         /// <summary>
         /// Bcat part protocol
         /// </summary>
-        OpRetBcatPart = 7
+        OpRetBcatPart = 7,
+        /// <summary>
+        /// OP_CHECKMULTISIG
+        /// </summary>
+        OpCheckMultisig = 8
     }
 }

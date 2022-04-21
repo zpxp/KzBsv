@@ -3,6 +3,7 @@
 // Distributed under the Open BSV software license, see the accompanying file LICENSE.
 #endregion
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace KzBsv
@@ -80,6 +81,22 @@ namespace KzBsv
             };
             return r;
         }
+
+        public static KzBTxIn FromMultisig(int required, List<KzPubKey> pubKeys, KzAmount value, KzUInt256 prevOutHashTx, int prevOutN, KzScript scriptPub, UInt32 sequence = KzTxIn.SEQUENCE_FINAL)
+        {
+            var (pub, sig) = KzBScript.NewMultisig(required, pubKeys);
+
+            var r = new KzBTxIn {
+                PrevOutHashTx = prevOutHashTx,
+                PrevOutN = prevOutN,
+                ScriptSig = sig,
+                Sequence = sequence,
+                Value = value,
+                ScriptPub = pub,
+            };
+            return r;
+        }
+
 
         public static KzBTxIn FromP2PKH(KzPubKey pubKey, KzTransaction prevOutTx, int prevOutN, UInt32 sequence = KzTxIn.SEQUENCE_FINAL)
         {

@@ -59,6 +59,12 @@ namespace KzBsv
         public static (KzBScriptPubP2PKH pub, KzBScriptSigP2PKH sig) NewP2PKH(KzPubKey pubKey)
             => (new KzBScriptPubP2PKH(pubKey.ToHash160()), new KzBScriptSigP2PKH(pubKey));
 
+        public static KzBScriptPubMultisig NewPubMultisig(int required, List<KzPubKey> pubKey) 
+		  		=> new KzBScriptPubMultisig(required, pubKey);
+        public static KzBScriptSigMultisig NewSigMultisig(int required) => new KzBScriptSigMultisig(required);
+        public static (KzBScriptPubMultisig pub, KzBScriptSigMultisig sig) NewMultisig(int required, List<KzPubKey> pubKeys)
+            => (new KzBScriptPubMultisig(required, pubKeys), new KzBScriptSigMultisig(required));
+
         public KzBScript() { }
 
         public KzBScript(byte[] script) { Set(new KzScript(script)); }
@@ -128,6 +134,26 @@ namespace KzBsv
 					 Ops[2].IsFinal &&
 					 Ops[3].Op.Code == KzOpcode.OP_EQUALVERIFY &&
 					 Ops[4].Op.Code == KzOpcode.OP_CHECKSIG;
+		}
+
+		public bool IsMultisig()
+		{
+			return Ops.Last().Op.Code == KzOpcode.OP_CHECKMULTISIG;
+		}
+
+		public List<KzPubKey> GetMultisigKeys() 
+		{
+			if(!IsMultisig())
+			{
+				return null;
+			}
+			var keyCount = (int)Ops[^2].Op.Code - 80;
+			var rtn = new List<KzPubKey>();
+			for (int i = 0; i < keyCount; i++)
+			{
+				rtn.Add(new KzPubKey(Ops[i + 1].Op.Data.ToSpan()));
+			}
+			return rtn;
 		}
 
 		/// <summary>
