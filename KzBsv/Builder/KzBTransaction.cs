@@ -165,7 +165,7 @@ namespace KzBsv
 				var scriptSig = input.ScriptSig;
 				if (scriptSig.Ops.Count == 2)
 				{
-					if (scriptSig.TemplateId == KzScriptTemplateId.P2PKH)
+					if (scriptSig.TemplateId == KzScriptTemplateId.P2PKH || scriptSig.TemplateId == KzScriptTemplateId.Unknown)
 					{
 						var pubKey = new KzPubKey();
 						pubKey.Set(scriptSig.Ops[1].Op.Data.ToSpan());
