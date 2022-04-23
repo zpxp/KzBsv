@@ -156,6 +156,15 @@ namespace KzBsv
 			return rtn;
 		}
 
+		public int GetMultisigThreshold()
+		{
+			if (!IsMultisig())
+			{
+				return -1;
+			}
+			return (int)Ops[0].Op.Code - 80;
+		}
+
 		/// <summary>
 		/// Converts hex and ascii strings to a specific byte count, if len has a value and disagrees it is an error.
 		/// Converts integer values to little endian bytes where the most significant bit is set if negative.
