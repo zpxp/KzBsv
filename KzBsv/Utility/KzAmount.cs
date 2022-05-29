@@ -85,10 +85,10 @@ namespace KzBsv {
             var f = s % (long)unit;
             var i = s / (long)unit;
             var r = unit switch {
-             KzBitcoinUnit.BSV     => $"{(m ? "-" : " ")}{i:#,0}.{f:000_000_00}",
-             KzBitcoinUnit.mBSV    => $"{(m ? "-" : " ")}{i:#,0}.{f:000_00}",
-             KzBitcoinUnit.Bit     => $"{(m ? "-" : " ")}{i:#,0}.{f:00}",
-             KzBitcoinUnit.Satoshi => $"{(m ? "-" : " ")}{i:#,0}",
+             KzBitcoinUnit.BSV     => $"{(m ? "-" : string.Empty)}{i:#,0}.{f:000_000_00}",
+             KzBitcoinUnit.mBSV    => $"{(m ? "-" : string.Empty)}{i:#,0}.{f:000_00}",
+             KzBitcoinUnit.Bit     => $"{(m ? "-" : string.Empty)}{i:#,0}.{f:00}",
+             KzBitcoinUnit.Satoshi => $"{(m ? "-" : string.Empty)}{i:#,0}",
              _ => throw new NotImplementedException()
             };
             r = r.Replace(',', '_');
