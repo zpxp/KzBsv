@@ -153,6 +153,34 @@ namespace KzBsv
 			return Sign(privKeys, confirmExistingSignatures: true);
 		}
 
+		/// <summary>
+		/// Add signature to input at given index. Assumes the sig is valid.
+		/// </summary>
+		public bool AddSignature(int inputIndex, byte[] sig)
+		{
+			var input = Vin[inputIndex];
+			var scriptSig = input.ScriptSig;
+			if (scriptSig.Ops.Count == 2)
+			{
+				if (scriptSig.TemplateId == KzScriptTemplateId.P2PKH || scriptSig.TemplateId == KzScriptTemplateId.Unknown)
+				{
+					var pubKey = new KzPubKey();
+					pubKey.Set(scriptSig.Ops[1].Op.Data.ToSpan());
+					if (pubKey.IsValid)
+					{
+						if (input.ScriptPub == null)
+						{
+							input.ScriptPub = new KzBScriptPubP2PKH(pubKey.ToHash160());
+						}
+						var op = KzOp.Push(sig.AsSpan());
+						scriptSig.Ops[0] = op;
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		public bool Sign(IEnumerable<KzPrivKey> privKeys = null, bool confirmExistingSignatures = false)
 		{
 			var signedOk = true;
@@ -167,6 +195,11 @@ namespace KzBsv
 				{
 					if (scriptSig.TemplateId == KzScriptTemplateId.P2PKH || scriptSig.TemplateId == KzScriptTemplateId.Unknown)
 					{
+						if (!scriptSig.Ops[0].Op.Data.Sequence.IsEmpty())
+						{
+							// already signed
+							continue;
+						}
 						var pubKey = new KzPubKey();
 						pubKey.Set(scriptSig.Ops[1].Op.Data.ToSpan());
 						if (pubKey.IsValid)
