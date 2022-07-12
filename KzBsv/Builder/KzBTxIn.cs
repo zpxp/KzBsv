@@ -68,7 +68,7 @@ namespace KzBsv
         {
             var (pub, sig) = KzBScript.NewP2PKH(pubKey);
             var ok = pub.ToScript() == scriptPub;
-            Debug.Assert(ok);
+            // Debug.Assert(ok);
 
             var r = new KzBTxIn {
                 PrevOutHashTx = prevOutHashTx,

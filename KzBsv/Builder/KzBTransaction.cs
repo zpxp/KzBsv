@@ -181,7 +181,7 @@ namespace KzBsv
 			return false;
 		}
 
-		public bool Sign(IEnumerable<KzPrivKey> privKeys = null, bool confirmExistingSignatures = false)
+		public bool Sign(IEnumerable<KzPrivKey> privKeys = null, bool confirmExistingSignatures = false, List<KzBSignature> signatures = null)
 		{
 			var signedOk = true;
 			var sigHashType = new KzSigHashType(KzSigHash.ALL | KzSigHash.FORKID);
@@ -204,6 +204,22 @@ namespace KzBsv
 						pubKey.Set(scriptSig.Ops[1].Op.Data.ToSpan());
 						if (pubKey.IsValid)
 						{
+							if (signatures != null &&
+								signatures.FirstOrDefault(x => x.OutputIdx == input.PrevOutN && x.HashTx == input.PrevOutHashTx) is var customSig &&
+								customSig != null)
+							{
+								// insert custom sig
+								var op = KzOp.Push(customSig.Signature.AsSpan());
+								if (confirmExistingSignatures)
+								{
+									signedOk &= op == scriptSig.Ops[0].Op;
+								}
+								else
+								{
+									scriptSig.Ops[0] = op;
+								}
+								continue;
+							}
 							var privKey = input.PrivKey ?? privKeys?.FirstOrDefault(k => k.GetPubKey() == pubKey);
 							if (privKey != null)
 							{
@@ -248,6 +264,23 @@ namespace KzBsv
 						var keys = input.ScriptPub.GetMultisigKeys();
 						var value = input.Value ?? input.PrevOutTx?.Vout[input.PrevOutN].Value ?? 0L;
 						var insertIdx = 1;
+						if (signatures != null)
+						{
+							foreach (var customSig in signatures.Where(x => x.OutputIdx == input.PrevOutN && x.HashTx == input.PrevOutHashTx))
+							{
+								// insert custom sig
+								var op = KzOp.Push(customSig.Signature.AsSpan());
+								if (confirmExistingSignatures)
+								{
+									signedOk &= op == scriptSig.Ops[insertIdx++].Op;
+								}
+								else
+								{
+									scriptSig.Ops[insertIdx++] = op;
+								}
+							}
+						}
+
 						foreach (var privKey in privKeys)
 						{
 							if (required == 0)
