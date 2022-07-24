@@ -91,7 +91,7 @@ namespace KzBsv
 		{
 			if (PrivateKey == null)
 			{
-				PrivateKey = new KzPrivKey().MakeNewKey(false);
+				PrivateKey = new KzPrivKey().MakeNewKey(true);
 			}
 			UpdatekEkM();
 
