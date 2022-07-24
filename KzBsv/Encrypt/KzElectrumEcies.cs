@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -25,18 +26,14 @@ namespace KzBsv
 	public class KzElectrumEcies
 	{
 
-		KzPrivKey _privKey;
-		KzPubKey _pubKey;
+		public KzPrivKey PrivateKey { get; set; }
 
-		public KzPrivKey PrivateKey { get => _privKey; set { _privKey = value; UpdatekEkM(); } }
+		public KzPubKey PublicKey { get; set; }
 
-		public KzPubKey PublicKey { get => _pubKey; set { _pubKey = value; UpdatekEkM(); } }
 
-		public bool ShortTag { get; set; }
-		public bool NoKey { get; set; }
-
-		KzUInt256 _kE;
-		KzUInt256 _kM;
+		byte[] _iv;
+		byte[] _kE;
+		byte[] _kM;
 
 		/// <summary>
 		/// Two parties set matching pairs of priv and pub keys.
@@ -47,24 +44,42 @@ namespace KzBsv
 		/// </summary>
 		void UpdatekEkM()
 		{
-			if (_privKey != null && _pubKey != null && _pubKey.IsValid)
+			if (PrivateKey != null && PublicKey != null && PublicKey.IsValid)
 			{
 				using var secp = new Secp256k1();
-				var k = _pubKey.Clone();
 				// Multiply the public key as an elliptic curve point by the private key a big number: 
-				var bn = _privKey.BN;
+				var bn = PrivateKey.BN;
 				var pkbs = new byte[64];
-				if (!secp.PublicKeyParse(pkbs.AsSpan(), _pubKey.ReadOnlySpan)) goto fail;
-				if (!secp.PubKeyTweakMul(pkbs.AsSpan(), _privKey.ReadOnlySpan)) goto fail;
-				// Hash the X coordinate of the resulting elliptic curve point.
+				if (!secp.PublicKeyParse(pkbs.AsSpan(), PublicKey.ReadOnlySpan)) return;
+				if (!secp.PubKeyTweakMul(pkbs.AsSpan(), PrivateKey.ReadOnlySpan)) return;
+				var buffer = new byte[33];
 				var x = pkbs.Slice(0, 32);
+				var y = pkbs.Slice(32, 32);
+				var yy = new BigInteger(y, true, false);
+				if (yy.IsEven)
+				{
+					buffer[0] = 0x02;
+				}
+				else
+				{
+					buffer[0] = 0x03;
+				}
 				x.Reverse();
-				var xhex = x.ToArray().ToHex();
-				var h = KzHashes.SHA512(x).ReadOnlySpan;
-				_kE = new KzUInt256(h.Slice(0, 32));
-				_kM = new KzUInt256(h.Slice(32, 32));
-			fail:
-				;
+				x.CopyTo(buffer.AsSpan(1));
+
+				// Hash the X coordinate of the resulting elliptic curve point.
+				buffer.Reverse();
+				var h = KzHashes.SHA512(buffer).ReadOnlySpan;
+				_iv = new byte[16];
+				h.Slice(0, 16).CopyTo(_iv);
+				_kE = new byte[16];
+				h.Slice(16, 16).CopyTo(_kE);
+				_kM = new byte[32];
+				h.Slice(32, 32).CopyTo(_kM);
+			}
+			else
+			{
+				throw new Exception("Invalid keys");
 			}
 		}
 
@@ -74,24 +89,22 @@ namespace KzBsv
 
 		public byte[] Encrypt(ReadOnlySpan<byte> data)
 		{
-			var iv = KzEncrypt.GenerateIV(_privKey.ReadOnlySpan, data);
-
-			var cipherText = KzEncrypt.AesEncrypt(data, _kE.ToBytes(), iv);
-			var BIE1 = Encoding.UTF8.GetBytes("BIE1");
-
-			if (NoKey)
+			if (PrivateKey == null)
 			{
 				PrivateKey = new KzPrivKey().MakeNewKey(false);
 			}
+			UpdatekEkM();
 
-			var rBuf = _privKey.GetPubKey().ReadOnlySpan;
+			var cipherText = KzEncrypt.AesEncrypt(data, _kE, _iv, true);
+			var BIE1 = Encoding.UTF8.GetBytes("BIE1");
+			var rBuf = PrivateKey.GetPubKey().ReadOnlySpan;
 			var len = BIE1.Length + rBuf.Length + cipherText.Length;
 			var dataBytes = new byte[len];
 			var spanData = dataBytes.AsSpan();
 			BIE1.CopyTo(spanData.Slice(0));
 			rBuf.CopyTo(spanData.Slice(BIE1.Length));
 			cipherText.CopyTo(spanData.Slice(BIE1.Length + rBuf.Length));
-			var hmac = KzHashes.HMACSHA256(_kM.ReadOnlySpan, spanData).ReadOnlySpan;
+			var hmac = KzHashes.HMACSHA256(_kM, spanData).ReadOnlySpan;
 			var result = new byte[len + hmac.Length];
 			var spanResult = result.AsSpan();
 			spanData.CopyTo(spanResult.Slice(0));
@@ -108,24 +121,25 @@ namespace KzBsv
 			}
 
 			var offset = 4;
-			if (!NoKey)
+			if (PublicKey == null)
 			{
 				var pub = data.Slice(4, 33);
 				PublicKey = new KzPubKey(pub);
 				offset = 37;
 			}
 
+			UpdatekEkM();
 			var tagLength = 32;
 			var cipherText = data.Slice(offset, data.Length - tagLength - offset);
 			var hmac = data.Slice(data.Length - tagLength);
-			var hmac2 = KzHashes.HMACSHA256(_kM.ReadOnlySpan, data.Slice(0, data.Length - tagLength)).ReadOnlySpan;
+			var hmac2 = KzHashes.HMACSHA256(_kM, data.Slice(0, data.Length - tagLength)).ReadOnlySpan;
 
 			if (hmac.ToHex() != hmac2.ToHex())
 			{
 				throw new Exception("Invalid checksum");
 			}
 
-			var r = KzEncrypt.AesDecrypt(cipherText, _kE.ToBytes());
+			var r = KzEncrypt.AesDecrypt(cipherText, _kE, _iv);
 			return r;
 		}
 	}
