@@ -181,6 +181,43 @@ namespace KzBsv
 			return false;
 		}
 
+		public bool IsFullySigned()
+		{
+			foreach (var input in Vin)
+			{
+				var scriptSig = input.ScriptSig;
+				if (scriptSig.Ops.Count == 2)
+				{
+					if (scriptSig.TemplateId == KzScriptTemplateId.P2PKH || scriptSig.TemplateId == KzScriptTemplateId.Unknown)
+					{
+						if (scriptSig.Ops[0].Op.Data.Sequence.IsEmpty())
+						{
+							// not signed
+							return false;
+						}
+					}
+					else if (scriptSig.TemplateId == KzScriptTemplateId.OpCheckMultisig)
+					{
+						if (input.ScriptPub == null)
+						{
+							throw new Exception("Multisig input ScriptPub null");
+						}
+						var required = scriptSig.Ops.Count - 1;
+						// skip the first op its a blank op
+						foreach (var op in scriptSig.Ops.Skip(1))
+						{
+							if (op.Op.Data.Sequence.IsEmpty())
+							{
+								// not signed
+								return false;
+							}
+						}
+					}
+				}
+			}
+			return true;
+		}
+
 		public bool Sign(IEnumerable<KzPrivKey> privKeys = null, bool confirmExistingSignatures = false, List<KzBSignature> signatures = null)
 		{
 			var signedOk = true;
