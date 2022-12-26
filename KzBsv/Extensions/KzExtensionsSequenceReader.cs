@@ -13,7 +13,7 @@ namespace KzBsv
     {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool TryCopyToA(this SequenceReader<byte> reader, ref KzUInt256 destination) {
+		public static bool TryCopyToA(ref this SequenceReader<byte> reader, ref KzUInt256 destination) {
 			var span = destination.Span;
 			if (reader.TryCopyTo(span)) {
 				reader.Advance(span.Length);
