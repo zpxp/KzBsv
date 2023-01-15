@@ -218,7 +218,22 @@ namespace KzBsv
 			return true;
 		}
 
-		public bool Sign(IEnumerable<KzPrivKey> privKeys = null, bool confirmExistingSignatures = false, List<KzBSignature> signatures = null)
+		public bool Sign(IEnumerable<KzPrivKey> privKeys, bool confirmExistingSignatures = false)
+		{
+			return Sign(privKeys.ToList(), null, confirmExistingSignatures);
+		}
+
+		public bool Sign(IEnumerable<KzBSignature> signatures, bool confirmExistingSignatures = false)
+		{
+			return Sign(null, signatures.ToList(), confirmExistingSignatures);
+		}
+
+		public bool Sign(IEnumerable<KzPrivKey> privKeys, IEnumerable<KzBSignature> signatures)
+		{
+			return Sign(privKeys.ToList(), signatures.ToList(), false);
+		}
+
+		public bool Sign(List<KzPrivKey> privKeys, List<KzBSignature> signatures, bool confirmExistingSignatures = false)
 		{
 			var signedOk = true;
 			var sigHashType = new KzSigHashType(KzSigHash.ALL | KzSigHash.FORKID);
