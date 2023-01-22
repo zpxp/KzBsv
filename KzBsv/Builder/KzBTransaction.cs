@@ -320,6 +320,10 @@ namespace KzBsv
 						{
 							foreach (var customSig in signatures.Where(x => x.OutputIdx == input.PrevOutN && x.HashTx == input.PrevOutHashTx))
 							{
+								if (insertIdx >= scriptSig.Ops.Count)
+								{
+									break;
+								}
 								// insert custom sig
 								var op = KzOp.Push(customSig.Signature.AsSpan());
 								if (confirmExistingSignatures)
@@ -336,6 +340,10 @@ namespace KzBsv
 						foreach (var privKey in privKeys)
 						{
 							if (required == 0)
+							{
+								break;
+							}
+							if (insertIdx >= scriptSig.Ops.Count)
 							{
 								break;
 							}
