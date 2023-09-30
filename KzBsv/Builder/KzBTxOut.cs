@@ -6,49 +6,58 @@ using System.Collections.Generic;
 
 namespace KzBsv
 {
-    public class KzBTxOut
-    {
-        public KzAmount Value;
-        public KzBScript ScriptPub = new KzBScript();
-        
-        public KzPubKey PubKey;
+	public class KzBTxOut
+	{
+		public KzAmount Value;
+		public KzBScript ScriptPub = new KzBScript();
 
-        public KzBTxOut() { }
+		public KzPubKey PubKey;
 
-        public KzBTxOut(KzTxOut txOut)
-        {
-            Value = txOut.Value;
-            ScriptPub.Set(txOut.ScriptPub);
-        }
+		public KzBTxOut() { }
 
-        public static KzBTxOut ToP2PKH(KzPubKey pubKey, KzAmount value)
-        {
-            var pub = KzBScript.NewPubP2PKH(pubKey.ToHash160());
+		public KzBTxOut(KzTxOut txOut)
+		{
+			Value = txOut.Value;
+			ScriptPub.Set(txOut.ScriptPub);
+		}
 
-            var r = new KzBTxOut {
-                Value = value,
-                ScriptPub = pub,
-                PubKey = pubKey
-            };
-            return r;
-        }
 
-        public static KzBTxOut ToMultisig(int required, List<KzPubKey> pubKeys, KzAmount value)
-        {
-            var pub = KzBScript.NewPubMultisig(required, pubKeys);
+		public KzBTxOut(KzAmount satoshis, KzBScript scriptPub)
+		{
+			Value = satoshis;
+			ScriptPub.Set(scriptPub);
+		}
 
-            var r = new KzBTxOut {
-                Value = value,
-                ScriptPub = pub,
-            };
-            return r;
-        }
+		public static KzBTxOut ToP2PKH(KzPubKey pubKey, KzAmount value)
+		{
+			var pub = KzBScript.NewPubP2PKH(pubKey.ToHash160());
 
-        public KzTxOut ToTxOut()
-        {
-            return new KzTxOut(Value, ScriptPub);
-        }
-    }
+			var r = new KzBTxOut
+			{
+				Value = value,
+				ScriptPub = pub,
+				PubKey = pubKey
+			};
+			return r;
+		}
+
+		public static KzBTxOut ToMultisig(int required, List<KzPubKey> pubKeys, KzAmount value)
+		{
+			var pub = KzBScript.NewPubMultisig(required, pubKeys);
+
+			var r = new KzBTxOut
+			{
+				Value = value,
+				ScriptPub = pub,
+			};
+			return r;
+		}
+
+		public KzTxOut ToTxOut()
+		{
+			return new KzTxOut(Value, ScriptPub);
+		}
+	}
 
 
 }

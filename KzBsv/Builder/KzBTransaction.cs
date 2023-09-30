@@ -90,6 +90,11 @@ namespace KzBsv
 			throw new NotImplementedException();
 		}
 
+		public void AddIn(KzTxIn txIn)
+		{
+			Vin.Add(new KzBTxIn(txIn));
+		}
+
 		public void AddIn(KzOutPoint prevout, KzScript scriptSig, UInt32 sequence = KzTxIn.SEQUENCE_FINAL)
 		{
 			throw new NotImplementedException();
