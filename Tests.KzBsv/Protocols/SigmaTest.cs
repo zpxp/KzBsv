@@ -19,6 +19,24 @@ namespace Tests.KzBsv.Protocols
 		private readonly KzPrivKey privateKey2;
 		private KzBTransaction tx;
 
+		private KzTxIn GetTxIn(string hash = "810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78b")
+		{
+			var script = KzBScript.ParseAsm("OP_DUP OP_HASH160 5a009731beae590247297ecee0b1b54aa4b96c5d OP_EQUALVERIFY OP_CHECKSIG");
+			return new KzTxIn(
+					new KzOutPoint(new KzUInt256(hash), 0),
+					script.ToScript(),
+					KzTxIn.SEQUENCE_FINAL);
+		}
+
+				private KzTxIn GetTxIn2(string hash = "810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78c")
+		{
+			var script = KzBScript.ParseAsm("OP_DUP OP_HASH160 5a009731beae590247297ecee0b1b54aa4b96c5a OP_EQUALVERIFY OP_CHECKSIG");
+			return new KzTxIn(
+					new KzOutPoint(new KzUInt256(hash), 0),
+					script.ToScript(),
+					KzTxIn.SEQUENCE_FINAL);
+		}
+
 		public SigmaTest()
 		{
 			privateKey = KzPrivKey.FromWIF("KzmFJcMXHufPNHixgHNwXBt3mHpErEUG6WFbmuQdy525DezYAi82");
@@ -107,7 +125,7 @@ namespace Tests.KzBsv.Protocols
 			var dataHash = sigma.GetDataHash();
 
 			// Add some inputs
-			var txIn1 = new KzTxIn(new KzOutPoint(new KzUInt256("810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78b"), 0), new KzScript("OP_DUP OP_HASH160 5a009731beae590247297ecee0b1b54aa4b96c5d OP_EQUALVERIFY OP_CHECKSIG"), 0);
+			var txIn1 = GetTxIn();
 			tx.AddIn(txIn1);
 
 			// Input hash should change after adding inputs
@@ -116,8 +134,8 @@ namespace Tests.KzBsv.Protocols
 			// Sign again now that inputs have been added
 			sigma.Sign(privateKey);
 
-			// Data hash should change after replacing dummy signature
-			Assert.NotEqual(sigma.GetDataHash(), dataHash);
+			// Data hash should not change after replacing dummy signature
+			Assert.Equal(sigma.GetDataHash(), dataHash);
 
 			Assert.True(sigma.Verify());
 		}
@@ -126,17 +144,24 @@ namespace Tests.KzBsv.Protocols
 		public void SpecifyAnInputToSign()
 		{
 			// Add some inputs
-			var txIn1 = new KzTxIn(new KzOutPoint(new KzUInt256("810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78b"), 0), new KzScript("OP_DUP OP_HASH160 5a009731beae590247297ecee0b1b54aa4b96c5d OP_EQUALVERIFY OP_CHECKSIG"), 0);
-			var txIn2 = new KzTxIn(new KzOutPoint(new KzUInt256("810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78c"), 0), new KzScript("OP_DUP OP_HASH160 5a009731beae590247297ecee0b1b54aa4b96c5c OP_EQUALVERIFY OP_CHECKSIG"), 0);
+			var txIn1 = GetTxIn();
+			var txIn2 = GetTxIn2();
 			tx.AddIn(txIn1);
 			tx.AddIn(txIn2);
 
-			Sigma sigma = new Sigma(tx, 0, 0, 1);
+			var sigma1 = new Sigma(tx, 0, 0, 0);
 
 			// Sign again now that inputs have been added
-			sigma.Sign(privateKey);
+			sigma1.Sign(privateKey);
+			Assert.True(sigma1.Verify());
 
-			Assert.True(sigma.Verify());
+			var sigma2 = new Sigma(tx, 0, 0, 1);
+
+			// Sign again now that inputs have been added
+			sigma2.Sign(privateKey);
+			Assert.True(sigma2.Verify());
+
+			Assert.NotEqual(sigma1.Sig.Signature, sigma2.Sig.Signature);
 		}
 
 		[Fact]

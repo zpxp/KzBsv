@@ -49,7 +49,7 @@ namespace KzBsv
 			 int targetVout = 0,
 			 int sigmaInstance = 0,
 			 int refVin = 0)
-			 :this(new KzBTransaction(transaction), targetVout, sigmaInstance, refVin)
+			 : this(new KzBTransaction(transaction), targetVout, sigmaInstance, refVin)
 		{
 		}
 
@@ -90,9 +90,10 @@ namespace KzBsv
 				throw new Exception("Input hash and data hash must be set");
 			}
 
-			using var hasher = new KzWriterHash();
-			hasher.Add(_inputHash).Add(_dataHash);
-			return hasher.GetHashFinal();
+			var buff = new byte[_inputHash.Length + _dataHash.Length].AsSpan();
+			_inputHash.Span.CopyTo(buff.Slice(0));
+			_dataHash.Span.CopyTo(buff.Slice(_inputHash.Length));
+			return KzHashes.SHA256(buff);
 		}
 
 		public KzBTransaction GetTransaction()
@@ -104,11 +105,11 @@ namespace KzBsv
 		{
 			var vin = _refVin == -1 ? _targetVout : _refVin;
 			var script = new KzBScript()
-				.Add(SigmaHex.HexToBytes())
-				.Add(Encoding.UTF8.GetBytes("BSM"))
-				.Add(Encoding.UTF8.GetBytes(address))
-				.Add(signature.ToArray())
-				.Add(new KzBOp(new KzValType(Encoding.UTF8.GetBytes(vin.ToString()))));
+				.Add(new KzBOp(KzOp.Push(SigmaHex.HexToBytes())))
+				.Add(new KzBOp(KzOp.Push(Encoding.UTF8.GetBytes("BSM"))))
+				.Add(new KzBOp(KzOp.Push(Encoding.UTF8.GetBytes(address))))
+				.Add(new KzBOp(KzOp.Push(signature)))
+				.Add(new KzBOp(KzOp.Push(Encoding.UTF8.GetBytes(vin.ToString()))));
 
 
 			_sig = new Sig
@@ -126,7 +127,7 @@ namespace KzBsv
 
 			var newScriptAsm = new List<KzBOp>();
 
-			var existingSig = _sig;
+			var existingSig = this.Sig;
 
 			if (existingSig != null && _sigmaInstance == GetSigInstanceCount())
 			{
@@ -165,6 +166,7 @@ namespace KzBsv
 
 		public Sig Sign(KzPrivKey privateKey)
 		{
+			SetHashes();
 			var hash = GetMessageHash();
 			var signature = BSM.Sign(privateKey, hash.ReadOnlySpan);
 			var address = privateKey.GetPubKey().ToAddress();
@@ -197,7 +199,7 @@ namespace KzBsv
 
 		private KzUInt256 GetInputHashByVin(int vin)
 		{
-			if (_transaction.Vin.Count < vin)
+			if (_transaction.Vin.Count > vin)
 			{
 				var txIn = _transaction.Vin[vin];
 				return KzHashes.SHA256(txIn.ScriptSig.ToBytes());
@@ -222,7 +224,7 @@ namespace KzBsv
 			var occurrences = 0;
 			for (var i = 0; i < scriptChunks.Count; i++)
 			{
-				if (scriptChunks[i].ToVerboseString().ToUpper() == SigmaHex.ToUpper())
+				if (scriptChunks[i].Op.ToString().ToUpper() == SigmaHex.ToUpper())
 				{
 					if (occurrences == _sigmaInstance)
 					{
@@ -258,14 +260,19 @@ namespace KzBsv
 
 				for (var i = 0; i < scriptChunks.Count; i++)
 				{
-					if (scriptChunks[i].ToVerboseString().ToUpper() == SigmaHex.ToUpper())
+					if (scriptChunks[i].Op.ToString().ToUpper() == SigmaHex.ToUpper())
 					{
+						var algorithm = Encoding.UTF8.GetString(scriptChunks[i + 1].Op.GetDataBytes());
+						var address = Encoding.UTF8.GetString(scriptChunks[i + 2].Op.GetDataBytes());
+						var signature = Convert.ToBase64String(scriptChunks[i + 3].Op.GetDataBytes());
+						var vin = int.Parse(Encoding.UTF8.GetString(scriptChunks[i + 4].Op.GetDataBytes()));
+
 						var sig = new Sig
 						{
-							Algorithm = Encoding.UTF8.GetString(scriptChunks[i + 1].Op.GetBytes()),
-							Address = Encoding.UTF8.GetString(scriptChunks[i + 2].Op.GetBytes()),
-							Signature = Convert.ToBase64String(scriptChunks[i + 3].Op.GetBytes()),
-							Vin = int.Parse(Encoding.UTF8.GetString(scriptChunks[i + 4].Op.GetBytes())),
+							Algorithm = algorithm,
+							Address = address,
+							Signature = signature,
+							Vin = vin,
 						};
 
 						instances.Add(sig);
@@ -275,20 +282,20 @@ namespace KzBsv
 						i += 4;
 					}
 				}
-				return instances.Count == 0 ? _sig : instances[_sigmaInstance];
+				return _sigmaInstance < instances.Count ? instances[_sigmaInstance] : null;
 			}
 		}
 
 		public int GetSigInstanceCount()
 		{
 			var existingAsm = TargetTxOut.ScriptPub.Ops;
-			return existingAsm.Count(x => x.ToVerboseString().Equals(SigmaHex, StringComparison.OrdinalIgnoreCase));
+			return existingAsm.Count(x => x.Op.ToString().Equals(SigmaHex, StringComparison.OrdinalIgnoreCase));
 		}
 
 		public int GetSigInstancePosition()
 		{
 			var existingAsm = TargetTxOut.ScriptPub.Ops;
-			return existingAsm.FindIndex(x => x.ToVerboseString().Equals(SigmaHex, StringComparison.OrdinalIgnoreCase));
+			return existingAsm.FindIndex(x => x.Op.ToString().Equals(SigmaHex, StringComparison.OrdinalIgnoreCase));
 		}
 	}
 }

@@ -384,6 +384,75 @@ namespace KzBsv
 			return sb;
 		}
 
+		public static KzBScript ParseAsm(string asm)
+		{
+			var sb = new KzBScript();
+			var ps = asm.Split(' ', StringSplitOptions.RemoveEmptyEntries).AsSpan();
+			while (ps.Length > 0)
+			{
+				var s = ps[0];
+				var args = 1;
+				var data = (byte[])null;
+				if (Enum.TryParse<KzOpcode>(s, out KzOpcode op))
+				{
+					if (op > KzOpcode.OP_0 && op < KzOpcode.OP_PUSHDATA1)
+					{
+						// add next single byte value to op.
+						args = 2;
+						data = KzEncoders.Hex.Decode(ps[1]);
+						if (data.Length >= (int)KzOpcode.OP_PUSHDATA1)
+							throw new InvalidOperationException();
+					}
+					else if (op >= KzOpcode.OP_PUSHDATA1 && op <= KzOpcode.OP_PUSHDATA4)
+					{
+						// add next one, two, or four byte value as length of following data value to op.
+						args = 2;
+						var lengthBytes = KzEncoders.Hex.Decode(ps[1]);
+						var len = 0u;
+						if (!BitConverter.IsLittleEndian)
+							throw new NotSupportedException();
+						if (op == KzOpcode.OP_PUSHDATA1)
+						{
+							// add next one byte value as length of following data value to op.
+							if (lengthBytes.Length != 1)
+								throw new InvalidOperationException();
+							len = lengthBytes[0];
+						}
+						else if (op == KzOpcode.OP_PUSHDATA2)
+						{
+							// add next two byte value as length of following data value to op.
+							if (lengthBytes.Length != 2)
+								throw new InvalidOperationException();
+							len = BitConverter.ToUInt16(lengthBytes);
+						}
+						else if (op == KzOpcode.OP_PUSHDATA4)
+						{
+							// add next four byte value as length of following data value to op.
+							if (lengthBytes.Length != 4)
+								throw new InvalidOperationException();
+							len = BitConverter.ToUInt32(lengthBytes);
+						}
+						if (len > 0)
+						{
+							args = 3;
+							data = KzEncoders.Hex.Decode(ps[2]);
+						}
+					}
+				}
+				else
+				{
+					data = KzEncoders.Hex.Decode(s);
+				}
+
+				if (data == null)
+					sb.Add(op);
+				else
+					sb.Add(KzOp.Push(data));
+				ps = ps.Slice(args);
+			}
+			return sb;
+		}
+
 		public static KzBScript FromAsmString(IEnumerable<KzBOp> ops)
 		{
 			var script = new KzBScript();

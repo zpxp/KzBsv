@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Tests.KzBsv.Script
 {
@@ -63,10 +64,13 @@ namespace Tests.KzBsv.Script
         };
 
         [Fact]
-        public void Encoding()
+        public void Encodings()
         {
 
             foreach (var tv in tv1s) {
+					var ff = Encoding.UTF8.GetBytes(tv.d).ToHex();
+                Assert.Equal(tv.h, ff);
+
                 var bytes = hex.Decode(tv.h);
                 var s = new KzScript(tv.h);
                 var ops = s.Decode().ToArray();
