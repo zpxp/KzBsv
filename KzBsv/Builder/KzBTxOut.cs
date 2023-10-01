@@ -41,6 +41,18 @@ namespace KzBsv
 			return r;
 		}
 
+		public static KzBTxOut ToP2PKH(string address, KzAmount value)
+		{
+			var hash160 = KzEncoders.B58Check.Decode(address)[1..];
+			var pub = KzBScript.NewPubP2PKH(new KzUInt160(hash160));
+			var r = new KzBTxOut
+			{
+				Value = value,
+				ScriptPub = pub,
+			};
+			return r;
+		}
+
 		public static KzBTxOut ToMultisig(int required, List<KzPubKey> pubKeys, KzAmount value)
 		{
 			var pub = KzBScript.NewPubMultisig(required, pubKeys);
