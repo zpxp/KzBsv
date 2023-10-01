@@ -28,7 +28,7 @@ namespace Tests.KzBsv.Protocols
 					KzTxIn.SEQUENCE_FINAL);
 		}
 
-				private KzTxIn GetTxIn2(string hash = "810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78c")
+		private KzTxIn GetTxIn2(string hash = "810755d937913d4228e1a4d192046d96c0642e2678d6a90e1cb794b0c2aeb78c")
 		{
 			var script = KzBScript.ParseAsm("OP_DUP OP_HASH160 5a009731beae590247297ecee0b1b54aa4b96c5a OP_EQUALVERIFY OP_CHECKSIG");
 			return new KzTxIn(
@@ -207,5 +207,18 @@ namespace Tests.KzBsv.Protocols
 		}
 
 
+
+		[Fact]
+		public void ValidateSignatureFromMultipleOrdinals()
+		{
+			var hex = File.ReadAllText(@"../../../data/tx.hex");
+			var tx = KzTransaction.ParseHex(hex);
+			for (int i = 0; i < 2; i++)
+			{
+				var sigma = new Sigma(tx, i, 0);
+				bool isValid = sigma.Verify();
+				Assert.True(isValid, i.ToString());
+			}
+		}
 	}
 }

@@ -64,7 +64,6 @@ namespace KzBsv
 			_refVin = refVin;
 			_sigmaInstance = sigmaInstance;
 			_sig = Sig;
-			SetHashes();
 		}
 
 		public void SetHashes()
@@ -85,6 +84,7 @@ namespace KzBsv
 
 		public KzUInt256 GetMessageHash()
 		{
+			SetHashes();
 			if (_inputHash == KzUInt256.Zero || _dataHash == KzUInt256.Zero)
 			{
 				throw new Exception("Input hash and data hash must be set");
@@ -166,7 +166,6 @@ namespace KzBsv
 
 		public Sig Sign(KzPrivKey privateKey)
 		{
-			SetHashes();
 			var hash = GetMessageHash();
 			var signature = BSM.Sign(privateKey, hash.ReadOnlySpan);
 			var address = privateKey.GetPubKey().ToAddress();
@@ -202,7 +201,7 @@ namespace KzBsv
 			if (_transaction.Vin.Count > vin)
 			{
 				var txIn = _transaction.Vin[vin];
-				return KzHashes.SHA256(txIn.ScriptSig.ToBytes());
+				return KzHashes.SHA256(txIn.PrevOut.ToBytes());
 			}
 			// using dummy hash
 			return KzHashes.SHA256(new byte[32]);

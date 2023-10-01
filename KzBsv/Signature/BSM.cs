@@ -13,15 +13,47 @@ namespace KzBsv
 	{
 		const string _messageMagic = "Bitcoin Signed Message:\n";
 
-		static KzUInt256 GetMessageHash(ReadOnlySpan<byte> message)
+		/// <summary>
+		/// this is the grottiest shit ive ever seen but has to be copied the same from rust sv lib. these fucking rust devs are wack insane
+		/// </summary>
+		static void WriteVarInt(List<byte> buff, ulong varint)
 		{
-			var messagehash = KzHashes.SHA256(message).ToHex();
-			return new KzWriterHash().Add(_messageMagic).Add(messagehash).GetHashFinal();
+			if (varint <= 252)
+			{
+				buff.Add((byte)varint);
+			}
+			else if (varint <= 0xffff)
+			{
+				buff.Add(0xfd);
+				buff.AddRange(BitConverter.GetBytes((UInt16)varint));
+			}
+			else if (varint <= 0xffffffff)
+			{
+				buff.Add(0xfe);
+				buff.AddRange(BitConverter.GetBytes((UInt32)varint));
+			}
+			else 
+			{
+				buff.Add(0xff);
+				buff.AddRange(BitConverter.GetBytes(varint));
+			}
+		}
+
+		static KzUInt256 GetMagic(ReadOnlySpan<byte> message)
+		{
+			var magic = Encoding.UTF8.GetBytes(_messageMagic);
+			var buff = new List<byte>(message.Length + magic.Length + 8);
+			WriteVarInt(buff, (ulong)magic.Length);
+			buff.AddRange(magic);
+			WriteVarInt(buff, (ulong)message.Length);
+			buff.AddRange(message.ToArray());
+
+			return KzHashes.HASH256(buff.ToArray());
 		}
 
 		public static byte[] Sign(KzPrivKey priv, ReadOnlySpan<byte> message)
 		{
-			var hash = GetMessageHash(message);
+			var hash = GetMagic(message);
 			var (ok, sig) = priv.SignCompact(hash);
 			if (!ok)
 			{
@@ -32,7 +64,7 @@ namespace KzBsv
 
 		public static KzPubKey RecoverCompact(ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature)
 		{
-			var hash = GetMessageHash(message);
+			var hash = GetMagic(message);
 			var (ok, key) = KzPubKey.FromRecoverCompact(hash, signature);
 			if (!ok)
 			{
@@ -43,7 +75,7 @@ namespace KzBsv
 
 		public static bool Verify(ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature, string address)
 		{
-			var hash = GetMessageHash(message);
+			var hash = GetMagic(message);
 			var pubKey = new KzPubKey();
 			if (!pubKey.RecoverCompact(hash, signature))
 			{
