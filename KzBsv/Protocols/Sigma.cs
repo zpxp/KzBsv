@@ -173,11 +173,17 @@ namespace KzBsv
 		}
 
 
-		public bool Verify()
+		public bool Verify(string compareAddress = null)
 		{
-			if (_sig == null)
+			var sig = _sig;
+			if (sig == null)
 			{
 				throw new Exception("No signature data provided");
+			}
+			if (compareAddress != null && compareAddress != sig.Address)
+			{
+				// wrong signer
+				return false;
 			}
 			var hash = GetMessageHash();
 			if (hash == KzUInt256.Zero)
@@ -185,9 +191,9 @@ namespace KzBsv
 				throw new Exception("No tx data provided");
 			}
 
-			var signature = Convert.FromBase64String(_sig.Signature);
+			var signature = Convert.FromBase64String(sig.Signature);
 			var key = BSM.RecoverCompact(hash.ReadOnlySpan, signature);
-			return key.ToAddress() == _sig.Address;
+			return key.ToAddress() == sig.Address;
 		}
 
 		public KzUInt256 GetInputHash()
