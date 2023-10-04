@@ -1,5 +1,13 @@
-[KzBsv](https://github.com/kzbsv/KzBsv)
+[KzBsv2](https://github.com/kzbsv/KzBsv)
 =
+
+# Install here
+https://www.nuget.org/packages/KzBsv2
+
+
+
+------------------
+
 
 This repository contains the following .NET C#, Visual Studio 2019 Preview compatible projects:
 
