@@ -146,16 +146,14 @@ namespace KzBsv
 			newScriptAsm = existingAsm.Append(separator).Concat(script.Ops).ToList();
 
 			var newScript = KzBScript.FromAsmString(newScriptAsm);
-			var signedTx = new KzBTransaction(_transaction.ToTransaction());
 			var signedTxOut = new KzBTxOut(TargetTxOut.Value, newScript);
-			signedTx.Vout[_targetVout] = signedTxOut;
+			_transaction.Vout[_targetVout] = signedTxOut;
 
-			_transaction = signedTx;
 
 			return new Sig
 			{
 				SigmaScript = script,
-				SignedTx = signedTx,
+				SignedTx = _transaction,
 				Address = address,
 				Signature = Convert.ToBase64String(signature),
 				Algorithm = "BSM",
