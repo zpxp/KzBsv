@@ -467,7 +467,7 @@ namespace KzBsv
 
 		public static implicit operator KzBScript(KzScript v)
 		{
-			throw new NotImplementedException();
+			return new KzBScript(v);
 		}
 	}
 }
