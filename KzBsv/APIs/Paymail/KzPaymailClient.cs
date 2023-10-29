@@ -100,7 +100,7 @@ namespace KzBsv
 
 		public async Task<KzP2PTxResponse> P2PTx(string receiverHandle, KzPaymail.P2PTxContract data)
 		{
-			var uri = await GetP2PTxUrl(receiverHandle, data.Metadata?.pubkey);
+			var uri = await GetP2PTxUrl(receiverHandle, data.metadata?.pubkey);
 
 			var jsonContent = JsonConvert.SerializeObject(data);
 			var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");

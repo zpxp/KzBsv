@@ -71,7 +71,7 @@ namespace KzBsv
 			public string hex { get; set; }
 			public string reference { get; set; }
 
-			public M? Metadata { get; set; }
+			public M metadata { get; set; }
 
 			public class M
 			{
