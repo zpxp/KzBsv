@@ -105,7 +105,11 @@ namespace KzBsv
 			var jsonContent = JsonConvert.SerializeObject(data);
 			var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 			var r = await _HttpClient.PostAsync(uri, httpContent);
-			r.EnsureSuccessStatusCode();
+			if ((int)r.StatusCode > 299)
+			{
+				var body = await r.Content.ReadAsStringAsync();
+				throw new HttpRequestException($"Status code did not indicate a success: {r.StatusCode} {body}");
+			}
 
 			var json = await r.Content.ReadAsStringAsync();
 			var res = JsonConvert.DeserializeObject<KzP2PTxResponse>(json);
@@ -119,7 +123,11 @@ namespace KzBsv
 			var jsonContent = JsonConvert.SerializeObject(new { satoshis });
 			var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 			var r = await _HttpClient.PostAsync(uri, httpContent);
-			r.EnsureSuccessStatusCode();
+			if ((int)r.StatusCode > 299)
+			{
+				var body = await r.Content.ReadAsStringAsync();
+				throw new HttpRequestException($"Status code did not indicate a success: {r.StatusCode} {body}");
+			}
 
 			var json = await r.Content.ReadAsStringAsync();
 			var res = JsonConvert.DeserializeObject<KzP2PPaymentDestinationsResponse>(json);
