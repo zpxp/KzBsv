@@ -19,6 +19,7 @@ namespace KzBsv
 			receiverApprovals,
 			payToProtocolPrefix,
 			p2pTx,
+			p2pPaymentDestination
 		}
 
 		/// <summary>
@@ -37,6 +38,7 @@ namespace KzBsv
 				Capability.receiverApprovals => "c318d09ed403",
 				Capability.payToProtocolPrefix => "7bd25e5a1fc6",
 				Capability.p2pTx => "5f1323cddf31",
+				Capability.p2pPaymentDestination => "2a40af698840",
 				_ => null
 			};
 		}

@@ -112,6 +112,20 @@ namespace KzBsv
 			return res;
 		}
 
+		public async Task<KzP2PPaymentDestinationsResponse> P2PPaymentDestination(string receiverHandle, long satoshis)
+		{
+			var uri = await GetP2PPaymentDestinationUrl(receiverHandle);
+
+			var jsonContent = JsonConvert.SerializeObject(new { satoshis });
+			var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+			var r = await _HttpClient.PostAsync(uri, httpContent);
+			r.EnsureSuccessStatusCode();
+
+			var json = await r.Content.ReadAsStringAsync();
+			var res = JsonConvert.DeserializeObject<KzP2PPaymentDestinationsResponse>(json);
+			return res;
+		}
+
 		/// <summary>
 		/// Implements brfc 759684b1a19a, paymentDestination: bsvalias Payment Addressing (Basic Address Resolution)
 		/// 
@@ -218,6 +232,7 @@ namespace KzBsv
 		public async Task<string> GetAddressUrl(string paymail) => await GetCapabilityUrl(KzPaymail.Capability.paymentDestination, paymail);
 		public async Task<string> GetVerifyUrl(string paymail, string pubkey) => await GetCapabilityUrl(KzPaymail.Capability.verifyPublicKeyOwner, paymail, pubkey);
 		public async Task<string> GetP2PTxUrl(string paymail, string pubkey) => await GetCapabilityUrl(KzPaymail.Capability.p2pTx, paymail, pubkey);
+		public async Task<string> GetP2PPaymentDestinationUrl(string paymail) => await GetCapabilityUrl(KzPaymail.Capability.p2pPaymentDestination, paymail);
 
 		public async Task EnsureCapability(string domain, KzPaymail.Capability capability)
 		{
@@ -295,6 +310,18 @@ namespace KzBsv
 		{
 			public string txid { get; set; }
 			public string note { get; set; }
+		}
+
+		public class KzP2PPaymentDestinationsResponse
+		{
+			public string reference { get; set; }
+			public List<KzP2POutput> outputs { get; set; }
+		}
+
+		public class KzP2POutput
+		{
+			public string script { get; set; }
+			public long satoshis { get; set; }
 		}
 
 		class GetOutputScriptRequest
