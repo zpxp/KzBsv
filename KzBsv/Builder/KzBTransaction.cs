@@ -62,6 +62,12 @@ namespace KzBsv
 			return new KzAmount((long)Math.Max(1, feeSatsPerByte * size));
 		}
 
+		public KzAmount SafeEstimateFeeInSatoshis(double feeSatsPerByte)
+		{
+			var size = ToTransaction().ToBytes().Length;
+			return new KzAmount((long)Math.Ceiling(feeSatsPerByte * size));
+		}
+
 		public void AddInP2PKH(KzPubKey pubKey, KzAmount value, KzUInt256 txId, int n, KzScript scriptPub, UInt32 sequence = KzTxIn.SEQUENCE_FINAL)
 		{
 			Vin.Add(KzBTxIn.FromP2PKH(pubKey, value, txId, n, scriptPub, sequence));
