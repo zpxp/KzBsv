@@ -116,7 +116,11 @@ namespace KzBsv
 			{
 				throw new Exception("Cannot create transaction. ScriptPub is missing with BIP 239 Enabled");
 			}
-			return new KzTxIn(PrevOut, ScriptPub.ToScript(), ScriptSig, Sequence);
+			if (Kz.BIP239Enabled && Value == null)
+			{
+				throw new Exception("Cannot create transaction. Value is missing with BIP 239 Enabled");
+			}
+			return new KzTxIn(PrevOut, Value.Value, ScriptPub.ToScript(), ScriptSig, Sequence);
 		}
 
 	}

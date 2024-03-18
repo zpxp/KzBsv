@@ -178,6 +178,7 @@ namespace KzBsv
 						  vin: new KzTxIn[] {
 								new KzTxIn(
 									 prevout: new KzOutPoint(KzUInt256.Zero, -1),
+									 prevSatoshis: new KzAmount(0),
 									 prevScriptOut: new KzScript(""),
 									 scriptSig: new KzScript(""),
 									 sequence: 0 )

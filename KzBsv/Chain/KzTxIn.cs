@@ -23,6 +23,7 @@ namespace KzBsv
 		public const UInt32 SEQUENCE_FINAL = 0xffff_ffff;
 
 		KzOutPoint _prevout;
+		KzAmount _prevSatoshis;
 		KzScript _prevScriptOut;
 		KzScript _scriptSig;
 		UInt32 _sequence;
@@ -32,9 +33,10 @@ namespace KzBsv
 		public KzScript ScriptSig => _scriptSig;
 		public UInt32 Sequence => _sequence;
 
-		public KzTxIn(KzOutPoint prevout, KzScript prevScriptOut, KzScript scriptSig, UInt32 sequence)
+		public KzTxIn(KzOutPoint prevout, KzAmount prevSatoshis, KzScript prevScriptOut, KzScript scriptSig, UInt32 sequence)
 		{
 			_prevout = prevout;
+			_prevSatoshis = prevSatoshis;
 			_prevScriptOut = prevScriptOut;
 			_scriptSig = scriptSig;
 			_sequence = sequence;
@@ -76,6 +78,7 @@ namespace KzBsv
 
 			if (Kz.BIP239Enabled)
 			{
+				writer.Add(_prevSatoshis);
 				writer.Add(_prevScriptOut);
 			}
 			return writer;
