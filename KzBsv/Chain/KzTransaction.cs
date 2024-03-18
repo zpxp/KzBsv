@@ -184,12 +184,12 @@ namespace KzBsv
 			return HashTx.ToString();
 		}
 
-		public IKzWriter AddTo(IKzWriter writer)
+		public IKzWriter AddTo(IKzWriter writer, bool useBip239)
 		{
 			writer
 				 .Add(_version);
 
-			if (Kz.BIP239Enabled)
+			if (useBip239)
 			{
 				writer
 			 		.Add(Convert.FromHexString("0000000000EF"));
@@ -201,7 +201,7 @@ namespace KzBsv
 
 			foreach (var txIn in _vin)
 				writer
-					 .Add(txIn)
+					 .Add(txIn, useBip239)
 					 ;
 			writer
 				 .Add(_vout.Length.AsVarIntBytes())
@@ -216,14 +216,14 @@ namespace KzBsv
 			return writer;
 		}
 
-		public byte[] ToBytes()
+		public byte[] ToBytes(bool useBip239 = false)
 		{
 			var wl = new KzWriterLength();
-			wl.Add(this);
+			wl.Add(this, useBip239);
 			var length = wl.Length;
 			var bytes = new byte[length];
 			var wm = new KzWriterMemory(new Memory<byte>(bytes));
-			wm.Add(this);
+			wm.Add(this, useBip239);
 			return bytes;
 		}
 	}

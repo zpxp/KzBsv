@@ -69,14 +69,14 @@ namespace KzBsv
 			return false;
 		}
 
-		public IKzWriter AddTo(IKzWriter writer)
+		public IKzWriter AddTo(IKzWriter writer, bool useBip239)
 		{
 			writer
 				 .Add(_prevout)
 				 .Add(_scriptSig)
 				 .Add(_sequence);
 
-			if (Kz.BIP239Enabled)
+			if (useBip239)
 			{
 				writer.Add(_prevSatoshis);
 				writer.Add(_prevScriptOut);
