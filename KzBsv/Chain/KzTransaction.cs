@@ -10,212 +10,221 @@ using System.Security.Cryptography;
 namespace KzBsv
 {
 
-    /// <summary>
-    /// Closely mirrors the data and layout of a Bitcoin transaction as stored in each block.
-    /// Focus is on performance when processing large numbers of transactions, including blocks of transactions.
-    /// In particular, script data is stored as <see cref="ReadOnlySequence{Byte}"/> allowing large scripts to
-    /// remain in whatever buffers were originally used. No script parsing data is maintained. 
-    /// Not intended for making dynamic changes to a transaction (adding inputs, outputs, signing).
-    /// See <see cref="KzBTransaction"/> when dynamically building a transaction to send.
-    /// In addition, transactions associated with specific wallets should consider KzWallets.KzWdbTx for transaction data.
-    /// Includes the following pre-computed meta data in addition to standard Bitcoin transaction data:
-    /// <list type="table">
-    /// <item><term>HashTx</term><description>Transaction's hash.</description></item>
-    /// </list>
-    /// </summary>
-    public class KzTransaction
-    {
+	/// <summary>
+	/// Closely mirrors the data and layout of a Bitcoin transaction as stored in each block.
+	/// Focus is on performance when processing large numbers of transactions, including blocks of transactions.
+	/// In particular, script data is stored as <see cref="ReadOnlySequence{Byte}"/> allowing large scripts to
+	/// remain in whatever buffers were originally used. No script parsing data is maintained. 
+	/// Not intended for making dynamic changes to a transaction (adding inputs, outputs, signing).
+	/// See <see cref="KzBTransaction"/> when dynamically building a transaction to send.
+	/// In addition, transactions associated with specific wallets should consider KzWallets.KzWdbTx for transaction data.
+	/// Includes the following pre-computed meta data in addition to standard Bitcoin transaction data:
+	/// <list type="table">
+	/// <item><term>HashTx</term><description>Transaction's hash.</description></item>
+	/// </list>
+	/// </summary>
+	public class KzTransaction
+	{
 
-        /// Essential fields of a Bitcoin SV transaction.
-        
-        Int32 _version;
-        KzTxIn[] _vin = new KzTxIn[0];
-        KzTxOut[] _vout = new KzTxOut[0];
-        UInt32 _lockTime;
+		/// Essential fields of a Bitcoin SV transaction.
 
-        /// The following fields are computed or external, not essential.
+		Int32 _version;
+		KzTxIn[] _vin = new KzTxIn[0];
+		KzTxOut[] _vout = new KzTxOut[0];
+		UInt32 _lockTime;
 
-        KzUInt256 _hashTx;
-        //Int64 _valueIn;
-        //Int64 _valueOut;
+		/// The following fields are computed or external, not essential.
 
-        /// Public access to essential header fields.
+		KzUInt256 _hashTx;
+		//Int64 _valueIn;
+		//Int64 _valueOut;
 
-        public Int32 Version => _version;
-        public UInt32 LockTime => _lockTime;
+		/// Public access to essential header fields.
 
-        public KzTxIn[] Vin => _vin;
-        public KzTxOut[] Vout => _vout;
+		public Int32 Version => _version;
+		public UInt32 LockTime => _lockTime;
 
-        /// Public access to computed or external, not essential.
+		public KzTxIn[] Vin => _vin;
+		public KzTxOut[] Vout => _vout;
 
-        public KzUInt256 HashTx => _hashTx;
+		/// Public access to computed or external, not essential.
 
-        public KzTransaction() { }
+		public KzUInt256 HashTx => _hashTx;
 
-        public KzTransaction(Int32 version, KzTxIn[] vin, KzTxOut[] vout, UInt32 lockTime)
-        {
-            _version = version;
-            _vin = vin;
-            _vout = vout;
-            _lockTime = lockTime;
-        }
+		public KzTransaction() { }
 
-        public KzTransaction(KzBTransaction tb)
-        {
-            _version = tb.Version;
-            _vin = tb.Vin.Select(i => i.ToTxIn()).ToArray();
-            _vout = tb.Vout.Select(o => o.ToTxOut()).ToArray();
-            _lockTime = tb.LockTime;
-        }
+		public KzTransaction(Int32 version, KzTxIn[] vin, KzTxOut[] vout, UInt32 lockTime)
+		{
+			_version = version;
+			_vin = vin;
+			_vout = vout;
+			_lockTime = lockTime;
+		}
 
-        public bool TryReadTransaction(ref ReadOnlySequence<byte> ros)
-        {
-            var r = new SequenceReader<byte>(ros);
-            if (!TryReadTransaction(ref r)) goto fail;
+		public KzTransaction(KzBTransaction tb)
+		{
+			_version = tb.Version;
+			_vin = tb.Vin.Select(i => i.ToTxIn()).ToArray();
+			_vout = tb.Vout.Select(o => o.ToTxOut()).ToArray();
+			_lockTime = tb.LockTime;
+		}
 
-            ros = ros.Slice(r.Consumed);
+		public bool TryReadTransaction(ref ReadOnlySequence<byte> ros)
+		{
+			var r = new SequenceReader<byte>(ros);
+			if (!TryReadTransaction(ref r)) goto fail;
 
-            return true;
-        fail:
-            return false;
-        }
+			ros = ros.Slice(r.Consumed);
 
-        public bool TryParseTransaction(ref SequenceReader<byte> r, IKzBlockParser bp)
-        {
-            var offset = r.Consumed;
-            var start = r.Position;
+			return true;
+		fail:
+			return false;
+		}
 
-            if (!r.TryReadLittleEndian(out _version)) goto fail;
-            if (!r.TryReadVarint(out long countIn)) goto fail;
+		public bool TryParseTransaction(ref SequenceReader<byte> r, IKzBlockParser bp)
+		{
+			var offset = r.Consumed;
+			var start = r.Position;
 
-            bp.TxStart(this, offset);
+			if (!r.TryReadLittleEndian(out _version)) goto fail;
+			if (!r.TryReadVarint(out long countIn)) goto fail;
 
-            _vin = new KzTxIn[countIn];
-            for (var i = 0L; i < countIn; i++)
-            {
-                ref var txin = ref _vin[i];
-                if (!txin.TryParseTxIn(ref r, bp)) goto fail;
-            }
+			bp.TxStart(this, offset);
 
-            if (!r.TryReadVarint(out long countOut)) goto fail;
+			_vin = new KzTxIn[countIn];
+			for (var i = 0L; i < countIn; i++)
+			{
+				ref var txin = ref _vin[i];
+				if (!txin.TryParseTxIn(ref r, bp)) goto fail;
+			}
 
-            _vout = new KzTxOut[countOut];
-            for (var i = 0L; i < countOut; i++)
-            {
-                ref var txout = ref _vout[i];
-                if (!txout.TryParseTxOut(ref r, bp)) goto fail;
-            }
+			if (!r.TryReadVarint(out long countOut)) goto fail;
 
-            if (!r.TryReadLittleEndian(out _lockTime)) goto fail;
+			_vout = new KzTxOut[countOut];
+			for (var i = 0L; i < countOut; i++)
+			{
+				ref var txout = ref _vout[i];
+				if (!txout.TryParseTxOut(ref r, bp)) goto fail;
+			}
 
-            var end = r.Position;
+			if (!r.TryReadLittleEndian(out _lockTime)) goto fail;
 
-            // Compute the transaction hash.
-            var txBytes = r.Sequence.Slice(start, end).ToArray();
-            using (var sha256 = SHA256.Create())
-            {
-                var hash1 = sha256.ComputeHash(txBytes);
-                var hash2 = sha256.ComputeHash(hash1);
-                hash2.CopyTo(_hashTx.Span);
-            }
+			var end = r.Position;
 
-            bp.TxParsed(this, r.Consumed);
+			// Compute the transaction hash.
+			var txBytes = r.Sequence.Slice(start, end).ToArray();
+			using (var sha256 = SHA256.Create())
+			{
+				var hash1 = sha256.ComputeHash(txBytes);
+				var hash2 = sha256.ComputeHash(hash1);
+				hash2.CopyTo(_hashTx.Span);
+			}
 
-            return true;
+			bp.TxParsed(this, r.Consumed);
 
-        fail:
-            return false;
-        }
+			return true;
 
-        public bool TryReadTransaction(ref SequenceReader<byte> r)
-        {
-            var start = r.Position;
+		fail:
+			return false;
+		}
 
-            if (!r.TryReadLittleEndian(out _version)) goto fail;
-            if (!r.TryReadVarint(out long countIn)) goto fail;
+		public bool TryReadTransaction(ref SequenceReader<byte> r)
+		{
+			var start = r.Position;
 
-            _vin = new KzTxIn[countIn];
-            for (var i = 0L; i < countIn; i++)
-            {
-                ref var txin = ref _vin[i];
-                if (!txin.TryReadTxIn(ref r)) goto fail;
-            }
+			if (!r.TryReadLittleEndian(out _version)) goto fail;
+			if (!r.TryReadVarint(out long countIn)) goto fail;
 
-            if (!r.TryReadVarint(out long countOut)) goto fail;
+			_vin = new KzTxIn[countIn];
+			for (var i = 0L; i < countIn; i++)
+			{
+				ref var txin = ref _vin[i];
+				if (!txin.TryReadTxIn(ref r)) goto fail;
+			}
 
-            _vout = new KzTxOut[countOut];
-            for (var i = 0L; i < countOut; i++)
-            {
-                ref var txout = ref _vout[i];
-                if (!txout.TryReadTxOut(ref r)) goto fail;
-            }
+			if (!r.TryReadVarint(out long countOut)) goto fail;
 
-            if (!r.TryReadLittleEndian(out _lockTime)) goto fail;
+			_vout = new KzTxOut[countOut];
+			for (var i = 0L; i < countOut; i++)
+			{
+				ref var txout = ref _vout[i];
+				if (!txout.TryReadTxOut(ref r)) goto fail;
+			}
 
-            var end = r.Position;
+			if (!r.TryReadLittleEndian(out _lockTime)) goto fail;
 
-            // Compute the transaction hash.
-            var txBytes = r.Sequence.Slice(start, end).ToArray();
-            using (var sha256 = SHA256.Create())
-            {
-                var hash1 = sha256.ComputeHash(txBytes);
-                var hash2 = sha256.ComputeHash(hash1);
-                hash2.CopyTo(_hashTx.Span);
-            }
+			var end = r.Position;
 
-            return true;
+			// Compute the transaction hash.
+			var txBytes = r.Sequence.Slice(start, end).ToArray();
+			using (var sha256 = SHA256.Create())
+			{
+				var hash1 = sha256.ComputeHash(txBytes);
+				var hash2 = sha256.ComputeHash(hash1);
+				hash2.CopyTo(_hashTx.Span);
+			}
 
-        fail:
-            return false;
-        }
+			return true;
 
-        public static KzTransaction ParseHex(string rawTxHex)
-        {
-            var bytes = rawTxHex.HexToBytes();
-            var tx = new KzTransaction();
-            var ros = new ReadOnlySequence<byte>(bytes);
-            if (!tx.TryReadTransaction(ref ros)) tx = null;
-            return tx;
-        }
+		fail:
+			return false;
+		}
 
-        public override string ToString()
-        {
-            return HashTx.ToString();
-        }
+		public static KzTransaction ParseHex(string rawTxHex)
+		{
+			var bytes = rawTxHex.HexToBytes();
+			var tx = new KzTransaction();
+			var ros = new ReadOnlySequence<byte>(bytes);
+			if (!tx.TryReadTransaction(ref ros)) tx = null;
+			return tx;
+		}
 
-        public IKzWriter AddTo(IKzWriter writer)
-        {
-            writer
-                .Add(_version)
-                .Add(_vin.Length.AsVarIntBytes())
-                ;
-            foreach (var txIn in _vin)
-                writer
-                    .Add(txIn)
-                    ;
-            writer
-                .Add(_vout.Length.AsVarIntBytes())
-                ;
-            foreach (var txOut in _vout)
-                writer
-                    .Add(txOut)
-                    ;
-            writer
-                .Add(_lockTime)
-                ;
-            return writer;
-        }
+		public override string ToString()
+		{
+			return HashTx.ToString();
+		}
 
-        public byte[] ToBytes()
-        {
-            var wl = new KzWriterLength();
-            wl.Add(this);
-            var length = wl.Length;
-            var bytes = new byte[length];
-            var wm = new KzWriterMemory(new Memory<byte>(bytes));
-            wm.Add(this);
-            return bytes;
-        }
-    }
+		public IKzWriter AddTo(IKzWriter writer)
+		{
+			writer
+				 .Add(_version);
+
+			if (Kz.BIP239Enabled)
+			{
+				writer
+			 		.Add(Convert.FromHexString("0000000000EF"));
+			}
+
+			writer
+				.Add(_vin.Length.AsVarIntBytes())
+				;
+
+			foreach (var txIn in _vin)
+				writer
+					 .Add(txIn)
+					 ;
+			writer
+				 .Add(_vout.Length.AsVarIntBytes())
+				 ;
+			foreach (var txOut in _vout)
+				writer
+					 .Add(txOut)
+					 ;
+			writer
+				 .Add(_lockTime)
+				 ;
+			return writer;
+		}
+
+		public byte[] ToBytes()
+		{
+			var wl = new KzWriterLength();
+			wl.Add(this);
+			var length = wl.Length;
+			var bytes = new byte[length];
+			var wm = new KzWriterMemory(new Memory<byte>(bytes));
+			wm.Add(this);
+			return bytes;
+		}
+	}
 }
