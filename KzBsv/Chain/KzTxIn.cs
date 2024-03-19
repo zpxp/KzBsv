@@ -58,11 +58,19 @@ namespace KzBsv
 			return false;
 		}
 
-		public bool TryReadTxIn(ref SequenceReader<byte> r)
+		public bool TryReadTxIn(ref SequenceReader<byte> r, bool readBip239 = false)
 		{
 			if (!_prevout.TryReadOutPoint(ref r)) goto fail;
 			if (!_scriptSig.TryReadScript(ref r)) goto fail;
 			if (!r.TryReadLittleEndian(out _sequence)) goto fail;
+
+			if (readBip239)
+			{
+				var val = new ReadOnlySequence<byte>(new byte[8]);
+				if (!r.TryReadExact(8, out val)) goto fail;
+				_prevSatoshis = BitConverter.ToInt64(val.ToSpan());
+				if (!_prevScriptOut.TryReadScript(ref r)) goto fail;
+			}
 
 			return true;
 		fail:

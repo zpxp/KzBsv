@@ -69,10 +69,10 @@ namespace KzBsv
 			_lockTime = tb.LockTime;
 		}
 
-		public bool TryReadTransaction(ref ReadOnlySequence<byte> ros)
+		public bool TryReadTransaction(ref ReadOnlySequence<byte> ros, bool readBip239 = false)
 		{
 			var r = new SequenceReader<byte>(ros);
-			if (!TryReadTransaction(ref r)) goto fail;
+			if (!TryReadTransaction(ref r, readBip239)) goto fail;
 
 			ros = ros.Slice(r.Consumed);
 
@@ -128,18 +128,25 @@ namespace KzBsv
 			return false;
 		}
 
-		public bool TryReadTransaction(ref SequenceReader<byte> r)
+		public bool TryReadTransaction(ref SequenceReader<byte> r, bool readBip239 = false)
 		{
 			var start = r.Position;
 
 			if (!r.TryReadLittleEndian(out _version)) goto fail;
+			if (readBip239)
+			{
+				var marker = new Span<byte>(Convert.FromHexString("0000000000EF"));
+				var markerSeq = new ReadOnlySequence<byte>(new byte[marker.Length]);
+				if (!r.TryReadExact(marker.Length, out markerSeq)) goto fail;
+				if (!marker.SequenceEqual(markerSeq.ToSpan())) goto fail;
+			}
 			if (!r.TryReadVarint(out long countIn)) goto fail;
 
 			_vin = new KzTxIn[countIn];
 			for (var i = 0L; i < countIn; i++)
 			{
 				ref var txin = ref _vin[i];
-				if (!txin.TryReadTxIn(ref r)) goto fail;
+				if (!txin.TryReadTxIn(ref r, readBip239)) goto fail;
 			}
 
 			if (!r.TryReadVarint(out long countOut)) goto fail;
@@ -170,12 +177,12 @@ namespace KzBsv
 			return false;
 		}
 
-		public static KzTransaction ParseHex(string rawTxHex)
+		public static KzTransaction ParseHex(string rawTxHex, bool readBip239 = false)
 		{
 			var bytes = rawTxHex.HexToBytes();
 			var tx = new KzTransaction();
 			var ros = new ReadOnlySequence<byte>(bytes);
-			if (!tx.TryReadTransaction(ref ros)) tx = null;
+			if (!tx.TryReadTransaction(ref ros, readBip239)) tx = null;
 			return tx;
 		}
 
