@@ -83,7 +83,11 @@ namespace KzBsv
 
 		public KzPubKey GetPubKey()
 		{
-			Trace.Assert(fValid);
+			// Trace.Assert(fValid);
+			if (!fValid)
+			{
+				throw new Exception("Invalid Private Key");
+			}
 			var pubKeySecp256k1 = new byte[PubKeyLength];
 			var ok = secp256k1.PublicKeyCreate(pubKeySecp256k1, keydata.ReadOnlySpan);
 			Trace.Assert(ok);
