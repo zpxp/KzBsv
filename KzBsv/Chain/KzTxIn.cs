@@ -66,8 +66,7 @@ namespace KzBsv
 
 			if (readBip239)
 			{
-				var val = new ReadOnlySequence<byte>(new byte[8]);
-				if (!r.TryReadExact(8, out val)) goto fail;
+				if (!r.TryReadExact(8, out var val)) goto fail;
 				_prevSatoshis = BitConverter.ToInt64(val.ToSpan());
 				if (!_prevScriptOut.TryReadScript(ref r)) goto fail;
 			}
