@@ -77,8 +77,8 @@ namespace KzBsv
 		{
 			lock (chainLock)
 			{
-				if (Kz.chain != KzChain.unkown)
-					throw new InvalidOperationException("The chain has already been selected.");
+				// if (Kz.chain != KzChain.unkown)
+				// 	throw new InvalidOperationException("The chain has already been selected.");
 				Kz.chain = chain;
 			}
 		}
